@@ -1057,7 +1057,7 @@ if ($seg0 === 'vip-consultations' && $method === 'POST') {
 // ============================================
 // SEED ROUTE: /api/seed
 // ============================================
-if ($seg0 === 'seed' && $method === 'GET') {
+if ($seg0 === 'seed') {
     try {
         // Truncate all tables
         $pdo->exec("SET FOREIGN_KEY_CHECKS=0;");
