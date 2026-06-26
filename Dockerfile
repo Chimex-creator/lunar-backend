@@ -20,6 +20,10 @@ RUN a2dismod mpm_event || true
 RUN a2dismod mpm_worker || true
 RUN a2enmod mpm_prefork || true
 
+# Copy Apache configuration files for dynamic port binding
+COPY apache-ports.conf /etc/apache2/ports.conf
+COPY apache-vhost.conf /etc/apache2/sites-available/000-default.conf
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -38,5 +42,5 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progre
 # Fallback port
 ENV PORT=80
 
-# Start command with runtime port replacement and MPM configuration to prevent crash and 502 on Railway
-CMD ["sh", "-c", "sed -i \"s/Listen .*/Listen $PORT/g\" /etc/apache2/ports.conf && sed -i \"s/<VirtualHost \\*:.*/<VirtualHost *:$PORT>/g\" /etc/apache2/sites-available/000-default.conf && a2dismod mpm_event || true && a2dismod mpm_worker || true && a2enmod mpm_prefork || true && apache2-foreground"]
+# Start command
+CMD ["apache2-foreground"]
