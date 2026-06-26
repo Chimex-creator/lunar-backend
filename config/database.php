@@ -7,14 +7,16 @@ class Database {
     private $db_name;
     private $username;
     private $password;
+    private $port;
     private $conn;
 
     public function __construct() {
         // Load environment variables from .env file
-        $this->host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? 'localhost';
-        $this->db_name = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?? 'barbing_db';
-        $this->username = $_ENV['DB_USER'] ?? getenv('DB_USER') ?? 'root';
-        $this->password = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?? '';
+        $this->host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? $_ENV['MYSQLHOST'] ?? getenv('MYSQLHOST') ?? 'localhost';
+        $this->port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?? $_ENV['MYSQLPORT'] ?? getenv('MYSQLPORT') ?? '3306';
+        $this->db_name = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?? $_ENV['MYSQLDATABASE'] ?? getenv('MYSQLDATABASE') ?? 'barbing_db';
+        $this->username = $_ENV['DB_USER'] ?? getenv('DB_USER') ?? $_ENV['MYSQLUSER'] ?? getenv('MYSQLUSER') ?? 'root';
+        $this->password = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?? $_ENV['MYSQLPASSWORD'] ?? getenv('MYSQLPASSWORD') ?? '';
     }
 
     public function getConnection() {
@@ -22,7 +24,7 @@ class Database {
 
         try {
             $this->conn = new \PDO(
-                "mysql:host=" . $this->host . ";dbname=" . $this->db_name,
+                "mysql:host=" . $this->host . ";port=" . $this->port . ";dbname=" . $this->db_name,
                 $this->username,
                 $this->password
             );

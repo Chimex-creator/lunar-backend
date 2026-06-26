@@ -30,14 +30,15 @@ if (file_exists($env_path)) {
 // ============================================
 // 3. DATABASE CONNECTION
 // ============================================
-$host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? 'localhost';
-$db   = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?? 'lunar_store';
-$user = $_ENV['DB_USER'] ?? getenv('DB_USER') ?? 'root';
-$pass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?? '';
+$host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? $_ENV['MYSQLHOST'] ?? getenv('MYSQLHOST') ?? 'localhost';
+$db   = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?? $_ENV['MYSQLDATABASE'] ?? getenv('MYSQLDATABASE') ?? 'lunar_store';
+$user = $_ENV['DB_USER'] ?? getenv('DB_USER') ?? $_ENV['MYSQLUSER'] ?? getenv('MYSQLUSER') ?? 'root';
+$pass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?? $_ENV['MYSQLPASSWORD'] ?? getenv('MYSQLPASSWORD') ?? '';
+$port = $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?? $_ENV['MYSQLPORT'] ?? getenv('MYSQLPORT') ?? '3306';
 
 try {
     $pdo = new PDO(
-        "mysql:host=$host;dbname=$db;charset=utf8mb4",
+        "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4",
         $user, $pass,
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
     );
