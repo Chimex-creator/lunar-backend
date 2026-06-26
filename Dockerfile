@@ -42,5 +42,5 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progre
 # Fallback port
 ENV PORT=80
 
-# Start command
-CMD ["apache2-foreground"]
+# Start command with runtime MPM configuration to prevent crash on Railway
+CMD ["sh", "-c", "a2dismod mpm_event || true; a2dismod mpm_worker || true; a2enmod mpm_prefork || true; apache2-foreground"]
