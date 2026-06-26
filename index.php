@@ -43,43 +43,111 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
     );
 
-    // Self-healing database check & columns creation
-    $columns = $pdo->query("DESCRIBE users")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('phone', $columns)) {
-        $pdo->exec("ALTER TABLE users ADD COLUMN phone VARCHAR(20) DEFAULT NULL AFTER email");
-    }
-    if (!in_array('avatar', $columns)) {
-        $pdo->exec("ALTER TABLE users ADD COLUMN avatar VARCHAR(255) DEFAULT NULL AFTER role");
-    }
-    if (!in_array('bio', $columns)) {
-        $pdo->exec("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT NULL AFTER avatar");
-    }
+    // ── CREATE ALL TABLES FIRST (safe on fresh DB) ──────────────────────────
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            phone VARCHAR(20) DEFAULT NULL,
+            password VARCHAR(255) NOT NULL,
+            role ENUM('user','admin') DEFAULT 'user',
+            avatar VARCHAR(255) DEFAULT NULL,
+            bio TEXT DEFAULT NULL,
+            notifications TEXT DEFAULT NULL,
+            is_blocked TINYINT(1) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
 
-    // Self-healing check for products table
-    $prod_cols = $pdo->query("DESCRIBE products")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('is_new_arrival', $prod_cols)) {
-        $pdo->exec("ALTER TABLE products ADD COLUMN is_new_arrival TINYINT(1) DEFAULT 0 AFTER is_featured");
-    }
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS categories (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            slug VARCHAR(255) UNIQUE NOT NULL,
+            description TEXT NULL,
+            image_url VARCHAR(255) NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
 
-    // Self-healing check for discounts table
-    $disc_cols = $pdo->query("DESCRIBE discounts")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('who_can_use', $disc_cols)) {
-        $pdo->exec("ALTER TABLE discounts ADD COLUMN who_can_use VARCHAR(20) DEFAULT 'all'");
-    }
-    if (!in_array('one_time_use', $disc_cols)) {
-        $pdo->exec("ALTER TABLE discounts ADD COLUMN one_time_use TINYINT(1) DEFAULT 0");
-    }
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS products (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            category_id INT NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            slug VARCHAR(255) UNIQUE NOT NULL,
+            description TEXT NOT NULL,
+            price DECIMAL(10,2) NOT NULL,
+            stock INT NOT NULL DEFAULT 0,
+            image_url VARCHAR(255) NOT NULL,
+            is_featured TINYINT(1) DEFAULT 0,
+            is_new_arrival TINYINT(1) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
 
-    // Self-healing check for orders table
-    $order_cols = $pdo->query("DESCRIBE orders")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('discount_code', $order_cols)) {
-        $pdo->exec("ALTER TABLE orders ADD COLUMN discount_code VARCHAR(50) DEFAULT NULL");
-    }
-    if (!in_array('notifications', $columns)) {
-        $pdo->exec("ALTER TABLE users ADD COLUMN notifications TEXT DEFAULT NULL AFTER bio");
-    }
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS discounts (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            code VARCHAR(50) UNIQUE NOT NULL,
+            type ENUM('percent','fixed') NOT NULL,
+            value DECIMAL(10,2) NOT NULL,
+            expires_at DATE NOT NULL,
+            usage_limit INT NULL,
+            used_count INT DEFAULT 0,
+            is_active TINYINT(1) DEFAULT 1,
+            who_can_use VARCHAR(20) DEFAULT 'all',
+            one_time_use TINYINT(1) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
 
-    // Self-healing table creation for newsletters and contact messages
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS orders (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            customer_id INT NULL,
+            customer_name VARCHAR(255) NULL,
+            total_amount DECIMAL(10,2) NOT NULL,
+            status ENUM('pending','processing','shipped','delivered','cancelled') DEFAULT 'pending',
+            shipping_address TEXT NOT NULL,
+            phone VARCHAR(20) NULL,
+            discount_code VARCHAR(50) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES users(id) ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS order_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            order_id INT NOT NULL,
+            product_id INT NOT NULL,
+            quantity INT NOT NULL,
+            price DECIMAL(10,2) NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS addresses (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            address_line1 VARCHAR(255) NOT NULL,
+            address_line2 VARCHAR(255) NULL,
+            city VARCHAR(100) NOT NULL,
+            state VARCHAR(100) NOT NULL,
+            postal_code VARCHAR(20) NULL,
+            country VARCHAR(100) NOT NULL,
+            is_default TINYINT(1) DEFAULT 0,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS newsletters (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -97,17 +165,11 @@ try {
             subject VARCHAR(255) NOT NULL,
             message TEXT NOT NULL,
             subscribed_newsletter TINYINT(1) DEFAULT 0,
+            status ENUM('Unread','Read','Replied') DEFAULT 'Unread',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
 
-    // Check contact_messages columns for status
-    $contact_cols = $pdo->query("DESCRIBE contact_messages")->fetchAll(PDO::FETCH_COLUMN);
-    if (!in_array('status', $contact_cols)) {
-        $pdo->exec("ALTER TABLE contact_messages ADD COLUMN status ENUM('Unread', 'Read', 'Replied') DEFAULT 'Unread' AFTER subscribed_newsletter");
-    }
-
-    // Create vip_consultations table
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS vip_consultations (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -115,26 +177,44 @@ try {
             email VARCHAR(255) NOT NULL,
             requested_service VARCHAR(255) NOT NULL,
             requested_date DATE DEFAULT NULL,
-            status ENUM('Pending', 'Contacted', 'Completed') DEFAULT 'Pending',
+            status ENUM('Pending','Contacted','Completed') DEFAULT 'Pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     ");
 
-    // Ensure WELCOME10 exists in discounts table
+    // ── SELF-HEALING: add missing columns to existing tables ─────────────────
+    $columns = $pdo->query("DESCRIBE users")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('phone', $columns))         $pdo->exec("ALTER TABLE users ADD COLUMN phone VARCHAR(20) DEFAULT NULL AFTER email");
+    if (!in_array('avatar', $columns))        $pdo->exec("ALTER TABLE users ADD COLUMN avatar VARCHAR(255) DEFAULT NULL AFTER role");
+    if (!in_array('bio', $columns))           $pdo->exec("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT NULL AFTER avatar");
+    if (!in_array('notifications', $columns)) $pdo->exec("ALTER TABLE users ADD COLUMN notifications TEXT DEFAULT NULL AFTER bio");
+
+    $prod_cols = $pdo->query("DESCRIBE products")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('is_new_arrival', $prod_cols)) $pdo->exec("ALTER TABLE products ADD COLUMN is_new_arrival TINYINT(1) DEFAULT 0 AFTER is_featured");
+
+    $disc_cols = $pdo->query("DESCRIBE discounts")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('who_can_use', $disc_cols))  $pdo->exec("ALTER TABLE discounts ADD COLUMN who_can_use VARCHAR(20) DEFAULT 'all'");
+    if (!in_array('one_time_use', $disc_cols)) $pdo->exec("ALTER TABLE discounts ADD COLUMN one_time_use TINYINT(1) DEFAULT 0");
+
+    $order_cols = $pdo->query("DESCRIBE orders")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('discount_code', $order_cols)) $pdo->exec("ALTER TABLE orders ADD COLUMN discount_code VARCHAR(50) DEFAULT NULL");
+
+    $contact_cols = $pdo->query("DESCRIBE contact_messages")->fetchAll(PDO::FETCH_COLUMN);
+    if (!in_array('status', $contact_cols)) $pdo->exec("ALTER TABLE contact_messages ADD COLUMN status ENUM('Unread','Read','Replied') DEFAULT 'Unread' AFTER subscribed_newsletter");
+
+    // ── SEED DEFAULT DATA ─────────────────────────────────────────────────────
     $ck_welcome = $pdo->prepare("SELECT id FROM discounts WHERE code = 'WELCOME10'");
     $ck_welcome->execute();
     if (!$ck_welcome->fetch()) {
         $pdo->exec("INSERT INTO discounts (code, type, value, expires_at, usage_limit, used_count, is_active, who_can_use, one_time_use) VALUES ('WELCOME10', 'percent', 10.00, '2030-12-31', 1000, 0, 1, 'new', 1)");
     }
 
-    // Ensure SUMMER25 exists in discounts table
     $ck_summer = $pdo->prepare("SELECT id FROM discounts WHERE code = 'SUMMER25'");
     $ck_summer->execute();
     if (!$ck_summer->fetch()) {
         $pdo->exec("INSERT INTO discounts (code, type, value, expires_at, usage_limit, used_count, is_active, who_can_use, one_time_use) VALUES ('SUMMER25', 'percent', 25.00, '2030-12-31', 1000, 0, 1, 'existing', 1)");
     }
 
-    // Ensure Test Existing user exists
     $ck_user = $pdo->prepare("SELECT id FROM users WHERE email = 'testexisting@lunar.com'");
     $ck_user->execute();
     if (!$ck_user->fetch()) {
