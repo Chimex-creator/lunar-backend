@@ -30,10 +30,10 @@ if (file_exists($env_path)) {
 // ============================================
 // 3. DATABASE CONNECTION
 // ============================================
-$host = $_ENV['DB_HOST'] ?? 'localhost';
-$db   = $_ENV['DB_NAME'] ?? 'lunar_store';
-$user = $_ENV['DB_USER'] ?? 'root';
-$pass = $_ENV['DB_PASSWORD'] ?? '';
+$host = $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?? 'localhost';
+$db   = $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?? 'lunar_store';
+$user = $_ENV['DB_USER'] ?? getenv('DB_USER') ?? 'root';
+$pass = $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?? '';
 
 try {
     $pdo = new PDO(
