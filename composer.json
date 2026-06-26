@@ -3,7 +3,8 @@
     "description": "PHP Backend for Barbing Website",
     "type": "project",
     "require": {
-        "php": ">=8.0"
+        "php": ">=8.0",
+        "ext-pdo_mysql": "*"
     },
     "autoload": {
         "psr-4": {
