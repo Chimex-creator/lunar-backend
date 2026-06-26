@@ -39,5 +39,5 @@ RUN sed -i 's/<VirtualHost \*:80>/<VirtualHost *:${PORT}>/g' /etc/apache2/sites-
 # Fallback port
 ENV PORT=80
 
-# Start command
-CMD ["sh", "-c", "apache2-foreground"]
+# Start command with runtime MPM configuration to prevent crash on Railway
+CMD ["sh", "-c", "a2dismod mpm_event || true; a2dismod mpm_worker || true; a2enmod mpm_prefork || true; apache2-foreground"]
