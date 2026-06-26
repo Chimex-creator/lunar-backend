@@ -42,5 +42,9 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progre
 # Fallback port
 ENV PORT=80
 
-# Start command with runtime MPM configuration to prevent crash on Railway
-CMD ["sh", "-c", "a2dismod mpm_event || true; a2dismod mpm_worker || true; a2enmod mpm_prefork || true; apache2-foreground"]
+# Copy and set up entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Start via entrypoint which writes .env from Railway env vars then starts Apache
+CMD ["/entrypoint.sh"]
