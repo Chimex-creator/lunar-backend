@@ -12,6 +12,11 @@ RUN apt-get update && apt-get install -y \
 # Enable Apache rewrite module for .htaccess
 RUN a2enmod rewrite
 
+# Disable conflicting MPMs for Railway
+RUN a2dismod mpm_event || true
+RUN a2dismod mpm_worker || true
+RUN a2enmod mpm_prefork || true
+
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
