@@ -1055,6 +1055,121 @@ if ($seg0 === 'vip-consultations' && $method === 'POST') {
 }
 
 // ============================================
+// SEED ROUTE: /api/seed
+// ============================================
+if ($seg0 === 'seed' && $method === 'GET') {
+    try {
+        // Truncate all tables
+        $pdo->exec("SET FOREIGN_KEY_CHECKS=0;");
+        foreach (['order_items','orders','discounts','products','categories','addresses','order_status_history','users','newsletters','contact_messages','vip_consultations'] as $t) {
+            $pdo->exec("TRUNCATE TABLE $t;");
+        }
+        $pdo->exec("SET FOREIGN_KEY_CHECKS=1;");
+
+        // Users
+        $pdo->prepare("INSERT INTO users (name,email,password,role,is_blocked) VALUES (?,?,?,?,0)")
+            ->execute(['Admin User','admin@lunar.com', password_hash('admin123', PASSWORD_DEFAULT), 'admin']);
+        $pdo->prepare("INSERT INTO users (name,email,password,role,is_blocked) VALUES (?,?,?,?,0)")
+            ->execute(['Customer User','user@lunar.com', password_hash('user123', PASSWORD_DEFAULT), 'user']);
+        $pdo->prepare("INSERT INTO users (name,email,password,role,is_blocked) VALUES (?,?,?,?,0)")
+            ->execute(['Jane Doe','jane@lunar.com', password_hash('user123', PASSWORD_DEFAULT), 'user']);
+
+        // Categories
+        $cats = [
+            [1,'Clothing','clothing','Meticulously curated silk evening dresses, hand-tailored cashmeres, and premium couture.','https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80'],
+            [2,'Handbags','handbags','Handcrafted top-grain Italian leather bags and pristine exotic clutches.','https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&auto=format&fit=crop&q=80'],
+            [3,'Jewelry','jewelry','Pristine ethically sourced diamonds, raw platinum settings, and timeless heirloom jewels.','https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&auto=format&fit=crop&q=80'],
+            [4,'Shoes','shoes','Fine bespoke footwear, luxury calfskin loafers, and elegant pumps.','https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=800&auto=format&fit=crop&q=80'],
+            [5,'Perfumes','perfumes','Olfactory masterpieces infused with royal oud, ambergris, and neroli blossoms.','https://images.unsplash.com/photo-1541643600914-78b084683601?w=800&auto=format&fit=crop&q=80'],
+            [6,'Accessories','accessories','Legendary mechanical timepieces, silk pocket squares, and premium sunglasses.','https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=800&auto=format&fit=crop&q=80'],
+        ];
+        $sc = $pdo->prepare("INSERT INTO categories (id,name,slug,description,image_url) VALUES (?,?,?,?,?)");
+        foreach ($cats as $c) $sc->execute($c);
+
+        // Products — 10 per category = 60 products
+        $products = [
+            // Clothing
+            [1,'Midnight Silk Gown','midnight-silk-gown','Flowing midnight-blue pure silk evening gown with hand-sewn crystal embellishments.',2499.99,15,'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80',1,1],
+            [1,'Ivory Cashmere Wrap','ivory-cashmere-wrap','Ultra-soft Mongolian cashmere wrap in pristine ivory with silk lining.',1899.99,20,'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?w=800&auto=format&fit=crop&q=80',1,0],
+            [1,'Emerald Velvet Blazer','emerald-velvet-blazer','Rich emerald velvet blazer with gold button details and satin lapels.',1299.99,12,'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&auto=format&fit=crop&q=80',0,1],
+            [1,'Champagne Satin Dress','champagne-satin-dress','Bias-cut champagne satin dress perfect for cocktail events.',1599.99,18,'https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=800&auto=format&fit=crop&q=80',0,0],
+            [1,'Obsidian Wool Coat','obsidian-wool-coat','Double-breasted obsidian black Italian wool overcoat with horn buttons.',2299.99,8,'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=800&auto=format&fit=crop&q=80',1,0],
+            [1,'Ruby Red Evening Cape','ruby-red-evening-cape','Dramatic floor-length cape in deep ruby red with fox-fur trim.',3499.99,5,'https://images.unsplash.com/photo-1551232864-3f0890e580d9?w=800&auto=format&fit=crop&q=80',0,1],
+            [1,'Pearl White Tuxedo','pearl-white-tuxedo','Custom-fit pearl white tuxedo with black satin piping.',1899.99,10,'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&auto=format&fit=crop&q=80',0,0],
+            [1,'Cobalt Linen Suit','cobalt-linen-suit','Lightweight cobalt blue Italian linen summer suit.',1449.99,14,'https://images.unsplash.com/photo-1583744946564-b52ac1c389c8?w=800&auto=format&fit=crop&q=80',0,1],
+            [1,'Golden Thread Kurta','golden-thread-kurta','Hand-embroidered golden thread kurta on finest cotton.',899.99,22,'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=800&auto=format&fit=crop&q=80',0,0],
+            [1,'Onyx Leather Jacket','onyx-leather-jacket','Butter-soft onyx lambskin leather jacket with quilted shoulders.',2199.99,7,'https://images.unsplash.com/photo-1562157873-818bc0726f68?w=800&auto=format&fit=crop&q=80',1,0],
+            // Handbags
+            [2,'Milano Leather Tote','milano-leather-tote','Full-grain Italian calfskin tote with suede interior lining.',1899.99,20,'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&auto=format&fit=crop&q=80',1,1],
+            [2,'Crystal Evening Clutch','crystal-evening-clutch','Hand-set Swarovski crystal evening clutch with chain strap.',1299.99,15,'https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=800&auto=format&fit=crop&q=80',1,0],
+            [2,'Bordeaux Crossbody','bordeaux-crossbody','Bordeaux pebbled leather crossbody with adjustable gold chain.',999.99,25,'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&auto=format&fit=crop&q=80',0,1],
+            [2,'Ivory Python Clutch','ivory-python-clutch','Genuine ivory-tone python clutch with magnetic clasp.',2499.99,6,'https://images.unsplash.com/photo-1590874103328-eac38a683ce7?w=800&auto=format&fit=crop&q=80',0,0],
+            [2,'Noir Structured Bag','noir-structured-bag','Architectural noir leather structured handbag with brass hardware.',1699.99,12,'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&auto=format&fit=crop&q=80',1,0],
+            [2,'Caramel Saddle Bag','caramel-saddle-bag','Artisan-crafted caramel saddle bag with hand-stitched details.',1199.99,18,'https://images.unsplash.com/photo-1591561954557-26941169b49e?w=800&auto=format&fit=crop&q=80',0,1],
+            [2,'Silver Chain Minaudiere','silver-chain-minaudiere','Art Deco silver-plated minaudière with silk tassel.',899.99,10,'https://images.unsplash.com/photo-1575032617751-6ddec2089882?w=800&auto=format&fit=crop&q=80',0,0],
+            [2,'Forest Suede Hobo','forest-suede-hobo','Deep forest green Italian suede hobo bag.',1399.99,14,'https://images.unsplash.com/photo-1594223274512-ad4803739b7c?w=800&auto=format&fit=crop&q=80',0,0],
+            [2,'Blush Quilted Flap','blush-quilted-flap','Blush quilted lambskin flap bag with turn-lock closure.',1599.99,9,'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=800&auto=format&fit=crop&q=80',0,1],
+            [2,'Ebony Briefcase','ebony-briefcase','Premium ebony full-grain leather executive briefcase.',2199.99,7,'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&auto=format&fit=crop&q=80',1,0],
+            // Jewelry
+            [3,'Celestial Diamond Ring','celestial-diamond-ring','2-carat VVS1 brilliant-cut diamond in platinum cathedral setting.',12999.99,5,'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=800&auto=format&fit=crop&q=80',1,1],
+            [3,'Sapphire Eternity Band','sapphire-eternity-band','Channel-set Ceylon sapphire eternity band in 18k white gold.',4999.99,8,'https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=800&auto=format&fit=crop&q=80',1,0],
+            [3,'Pearl Cascade Necklace','pearl-cascade-necklace','Japanese Akoya pearl cascade necklace with diamond clasp.',3499.99,10,'https://images.unsplash.com/photo-1515562141589-67f0d93bbb48?w=800&auto=format&fit=crop&q=80',0,1],
+            [3,'Emerald Drop Earrings','emerald-drop-earrings','Colombian emerald drop earrings with pavé diamond halos.',6999.99,6,'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&auto=format&fit=crop&q=80',0,0],
+            [3,'Gold Chain Bracelet','gold-chain-bracelet','Hand-forged 22k gold chunky chain bracelet.',2999.99,12,'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&auto=format&fit=crop&q=80',1,0],
+            [3,'Ruby Heart Pendant','ruby-heart-pendant','Burmese ruby heart pendant on 18k rose gold chain.',5499.99,7,'https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?w=800&auto=format&fit=crop&q=80',0,1],
+            [3,'Platinum Cuff Links','platinum-cuff-links','Solid platinum cuff links with black onyx inlay.',1899.99,15,'https://images.unsplash.com/photo-1573408301185-9146fe634ad0?w=800&auto=format&fit=crop&q=80',0,0],
+            [3,'Tanzanite Cocktail Ring','tanzanite-cocktail-ring','Exceptional 5ct tanzanite cocktail ring with diamond shoulders.',8999.99,4,'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?w=800&auto=format&fit=crop&q=80',0,0],
+            [3,'Diamond Tennis Bracelet','diamond-tennis-bracelet','5-carat total diamond tennis bracelet in 18k white gold.',7999.99,6,'https://images.unsplash.com/photo-1611591437281-460bfbe1220a?w=800&auto=format&fit=crop&q=80',1,1],
+            [3,'Opal Dangle Earrings','opal-dangle-earrings','Australian fire opal dangle earrings with diamond accents.',3299.99,9,'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?w=800&auto=format&fit=crop&q=80',0,0],
+            // Shoes
+            [4,'Venetian Calfskin Loafers','venetian-calfskin-loafers','Hand-lasted calfskin penny loafers with leather sole.',899.99,20,'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=800&auto=format&fit=crop&q=80',1,1],
+            [4,'Scarlet Stiletto Pumps','scarlet-stiletto-pumps','Patent leather scarlet stiletto pumps with 100mm heel.',749.99,15,'https://images.unsplash.com/photo-1596703263926-eb0762ee17e4?w=800&auto=format&fit=crop&q=80',1,0],
+            [4,'Midnight Oxford Brogues','midnight-oxford-brogues','Full-brogue Oxford shoes in midnight navy Cordovan leather.',1199.99,12,'https://images.unsplash.com/photo-1614252369475-531eba835eb1?w=800&auto=format&fit=crop&q=80',0,1],
+            [4,'Champagne Slingbacks','champagne-slingbacks','Champagne satin slingback heels with crystal buckle.',699.99,18,'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=800&auto=format&fit=crop&q=80',0,0],
+            [4,'Cognac Chelsea Boots','cognac-chelsea-boots','Premium cognac suede Chelsea boots with Goodyear welt.',999.99,10,'https://images.unsplash.com/photo-1608256246200-53e635b5b65f?w=800&auto=format&fit=crop&q=80',1,0],
+            [4,'Ivory Bridal Flats','ivory-bridal-flats','Hand-beaded ivory silk bridal ballet flats.',599.99,22,'https://images.unsplash.com/photo-1596703263926-eb0762ee17e4?w=800&auto=format&fit=crop&q=80',0,1],
+            [4,'Obsidian Monk Straps','obsidian-monk-straps','Double monk strap shoes in obsidian black box calf.',1099.99,8,'https://images.unsplash.com/photo-1614252369475-531eba835eb1?w=800&auto=format&fit=crop&q=80',0,0],
+            [4,'Rose Gold Sandals','rose-gold-sandals','Metallic rose gold strappy heeled sandals.',649.99,16,'https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=800&auto=format&fit=crop&q=80',0,0],
+            [4,'Mahogany Riding Boots','mahogany-riding-boots','Tall mahogany leather riding boots with brass zippers.',1499.99,6,'https://images.unsplash.com/photo-1608256246200-53e635b5b65f?w=800&auto=format&fit=crop&q=80',0,1],
+            [4,'Silver Mule Slides','silver-mule-slides','Hammered silver leather mule slides with padded insole.',549.99,20,'https://images.unsplash.com/photo-1596703263926-eb0762ee17e4?w=800&auto=format&fit=crop&q=80',1,0],
+            // Perfumes
+            [5,'Royal Oud Elixir','royal-oud-elixir','Rare aged oud wood blended with Damask rose and saffron.',899.99,25,'https://images.unsplash.com/photo-1541643600914-78b084683601?w=800&auto=format&fit=crop&q=80',1,1],
+            [5,'Neroli Blossom','neroli-blossom','Fresh Tunisian neroli with bergamot and white musk.',449.99,30,'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=800&auto=format&fit=crop&q=80',1,0],
+            [5,'Midnight Amber','midnight-amber','Rich amber resin with vanilla, tonka bean, and labdanum.',599.99,20,'https://images.unsplash.com/photo-1587017539504-67cfbddac569?w=800&auto=format&fit=crop&q=80',0,1],
+            [5,'Velvet Orchid','velvet-orchid','Exotic orchid petals with dark chocolate and patchouli.',749.99,15,'https://images.unsplash.com/photo-1541643600914-78b084683601?w=800&auto=format&fit=crop&q=80',0,0],
+            [5,'Citrus Royale','citrus-royale','Sparkling Calabrian bergamot with yuzu and cedarwood.',399.99,35,'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=800&auto=format&fit=crop&q=80',1,0],
+            [5,'Iris Absolute','iris-absolute','Precious Florentine iris root with suede and ambrette.',1299.99,8,'https://images.unsplash.com/photo-1587017539504-67cfbddac569?w=800&auto=format&fit=crop&q=80',0,1],
+            [5,'Sandalwood Dream','sandalwood-dream','Mysore sandalwood with cardamom and creamy coconut.',549.99,22,'https://images.unsplash.com/photo-1541643600914-78b084683601?w=800&auto=format&fit=crop&q=80',0,0],
+            [5,'Jasmine Absolute','jasmine-absolute','Indian jasmine sambac with tuberose and ylang ylang.',699.99,18,'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=800&auto=format&fit=crop&q=80',0,0],
+            [5,'Leather Oud Intense','leather-oud-intense','Dark leather accord with Laotian oud and smoky incense.',999.99,10,'https://images.unsplash.com/photo-1587017539504-67cfbddac569?w=800&auto=format&fit=crop&q=80',1,1],
+            [5,'Rose de Mai','rose-de-mai','Grasse rose absolute with peony petals and pink pepper.',849.99,12,'https://images.unsplash.com/photo-1541643600914-78b084683601?w=800&auto=format&fit=crop&q=80',0,0],
+            // Accessories
+            [6,'Heritage Chronograph','heritage-chronograph','Swiss-made automatic chronograph with sapphire crystal.',4999.99,10,'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=800&auto=format&fit=crop&q=80',1,1],
+            [6,'Aviator Sunglasses','aviator-sunglasses','Titanium frame aviator sunglasses with polarized lenses.',599.99,25,'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=800&auto=format&fit=crop&q=80',1,0],
+            [6,'Silk Pocket Square Set','silk-pocket-square-set','Set of 4 hand-rolled Italian silk pocket squares.',299.99,30,'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=800&auto=format&fit=crop&q=80',0,1],
+            [6,'Alligator Belt','alligator-belt','Genuine Louisiana alligator belt with palladium buckle.',899.99,12,'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=800&auto=format&fit=crop&q=80',0,0],
+            [6,'Cashmere Scarf','cashmere-scarf','Mongolian cashmere scarf in herringbone weave.',449.99,20,'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=800&auto=format&fit=crop&q=80',1,0],
+            [6,'Titanium Card Holder','titanium-card-holder','Brushed titanium minimalist card holder with RFID blocking.',199.99,40,'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=800&auto=format&fit=crop&q=80',0,1],
+            [6,'Gold Tie Bar','gold-tie-bar','18k gold vermeil tie bar with brushed finish.',349.99,18,'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=800&auto=format&fit=crop&q=80',0,0],
+            [6,'Leather Travel Case','leather-travel-case','Full-grain leather watch travel case for 4 timepieces.',699.99,15,'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=800&auto=format&fit=crop&q=80',0,0],
+            [6,'Carbon Fiber Wallet','carbon-fiber-wallet','Genuine carbon fiber slim bifold wallet with RFID protection.',279.99,28,'https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=800&auto=format&fit=crop&q=80',0,1],
+            [6,'Sapphire Cufflinks','sapphire-cufflinks','Sterling silver cufflinks with cabochon blue sapphires.',799.99,10,'https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=800&auto=format&fit=crop&q=80',1,0],
+        ];
+        $sp = $pdo->prepare("INSERT INTO products (category_id, name, slug, description, price, stock, image_url, is_featured, is_new_arrival) VALUES (?,?,?,?,?,?,?,?,?)");
+        foreach ($products as $p) $sp->execute($p);
+
+        // Discounts
+        $pdo->exec("INSERT INTO discounts (code, type, value, expires_at, usage_limit, used_count, is_active, who_can_use, one_time_use) VALUES ('WELCOME10', 'percent', 10.00, '2030-12-31', 1000, 0, 1, 'new', 1)");
+        $pdo->exec("INSERT INTO discounts (code, type, value, expires_at, usage_limit, used_count, is_active, who_can_use, one_time_use) VALUES ('SUMMER25', 'percent', 25.00, '2030-12-31', 1000, 0, 1, 'existing', 1)");
+        $pdo->exec("INSERT INTO discounts (code, type, value, expires_at, usage_limit, used_count, is_active, who_can_use, one_time_use) VALUES ('LUXE50', 'fixed', 50.00, '2030-12-31', 500, 0, 1, 'all', 0)");
+
+        ok(['message' => 'Database seeded successfully! Created 3 users, 6 categories, 60 products, and 3 discount codes.']);
+    } catch (Exception $e) {
+        err('Seeding failed: ' . $e->getMessage(), 500);
+    }
+}
+
+// ============================================
 // FALLBACK 404
 // ============================================
 err('Endpoint not found: /' . implode('/', array_filter([$seg0, $seg1, $seg2])), 404);
